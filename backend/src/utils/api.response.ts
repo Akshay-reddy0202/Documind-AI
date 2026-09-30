@@ -1,5 +1,4 @@
 import { Response } from "express";
-import { success } from "zod";
 
 type ApiSuccessResponse<T> = {
   success: true;
@@ -16,8 +15,9 @@ export const successResponse = <T>(
   res: Response,
   message: string,
   data: T,
+  statusCode: number = 200,
 ): Response<ApiSuccessResponse<T>> => {
-  return res.status(200).json({
+  return res.status(statusCode).json({
     success: true,
     message,
     data,
