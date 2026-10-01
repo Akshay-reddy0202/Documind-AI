@@ -40,7 +40,7 @@ export const getDocument = async (id: string) => {
 };
 
 export const getDocumentFile = async (id: string) => {
-  return prisma.document.findUnique({
+  const document = prisma.document.findUnique({
     where: {
       id,
     },
@@ -51,6 +51,8 @@ export const getDocumentFile = async (id: string) => {
       fileData: true,
     },
   });
+
+  return document;
 };
 
 export const updateDocument = async (id: string, data: UpdateDocumentInput) => {
@@ -152,6 +154,5 @@ export const uploadDocuments = async (files: Express.Multer.File[]) => {
       });
     }
   }
-
   return results;
 };
