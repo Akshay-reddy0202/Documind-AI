@@ -54,115 +54,134 @@ const combineParagraphs = (paragraphs: string[]): string[] => {
   return chunks;
 };
 
-// Split long text while preserving separators.
 export const splitRecursively = (
   text: string,
   chunkSize = CHUNK_SIZE,
   separators = ["\n\n", "\n", ". ", " "],
 ): string[] => {
-  const trimmed = text.trim();
-  if (trimmed.length <= chunkSize) {
-    return trimmed ? [trimmed] : [];
+  if (!text) {
+    return [];
   }
 
- 
-  let chosenSep = separators.find((sep) => trimmed.includes(sep));
+  if (text.length <= chunkSize) {
+    return [text];
+  }
 
+  // Find the first separator present in the text
+  const chosenSep = separators.find((sep) => text.includes(sep));
 
+  // Fallback if no separators match: split by character length safely
   if (!chosenSep) {
     const rawChunks: string[] = [];
-    for (let i = 0; i < trimmed.length; i += chunkSize) {
-      rawChunks.push(trimmed.slice(i, i + chunkSize));
+    for (let i = 0; i < text.length; i += chunkSize) {
+      rawChunks.push(text.slice(i, i + chunkSize));
     }
     return rawChunks;
   }
 
-  const splits = trimmed.split(chosenSep);
+  const splits = text.split(chosenSep);
   const nextSeparators = separators.slice(separators.indexOf(chosenSep) + 1);
-
   const chunks: string[] = [];
   let current = "";
 
-  for (const piece of splits) {
-    const candidate = current ? `${current}${chosenSep}${piece}` : piece;
+  for (let i = 0; i < splits.length; i++) {
+    const piece = splits[i];
+    // Re-attach the separator if it's not the last element
+    const pieceWithSep = i < splits.length - 1 ? `${piece}${chosenSep}` : piece;
 
-    if (candidate.length <= chunkSize) {
-      current = candidate;
+    if ((current + pieceWithSep).length <= chunkSize) {
+      current += pieceWithSep;
     } else {
       if (current) {
-        chunks.push(current.trim());
+        chunks.push(current);
       }
-      
-      if (piece.length > chunkSize) {
-        chunks.push(...splitRecursively(piece, chunkSize, nextSeparators));
+
+      if (pieceWithSep.length > chunkSize) {
+        // Safe recursion passing down the current piece with its separator intact
+        chunks.push(
+          ...splitRecursively(pieceWithSep, chunkSize, nextSeparators),
+        );
         current = "";
       } else {
-        current = piece;
+        current = pieceWithSep;
       }
     }
   }
 
-  if (current.trim()) {
-    chunks.push(current.trim());
+  if (current) {
+    chunks.push(current);
   }
 
   return chunks;
 };
 
 /**
- * Creates overlapping chunks respecting token/character limits
+ * Creates true overlapping chunks across a continuous series of atomic text pieces.
  */
-export const createOverlappingChunks = (
-  text: string,
+export const chunkPages = (
+  pages: ExtractedPage[],
   chunkSize = CHUNK_SIZE,
   chunkOverlap = CHUNK_OVERLAP,
-): string[] => {
-  const baseChunks = splitRecursively(text, chunkSize - chunkOverlap);
-  if (baseChunks.length <= 1) return baseChunks;
+): TextChunk[] => {
+  const chunks: TextChunk[] = [];
+  let globalChunkIndex = 0;
 
-  const result: string[] = [];
+  // 1. Process pages into smaller structural fragments while tracking their origin page
+  const fragments: { text: string; pageNumber: number }[] = [];
 
-  for (let i = 0; i < baseChunks.length; i++) {
-    let chunk = baseChunks[i];
-
-    // Prepend overlap from previous chunk if available
-    if (i > 0) {
-      const prev = baseChunks[i - 1];
-      const overlapText = prev.slice(-chunkOverlap);
-      // Align to closest space so words are not truncated
-      const spaceIdx = overlapText.indexOf(" ");
-      const cleanOverlap =
-        spaceIdx !== -1 ? overlapText.slice(spaceIdx + 1) : overlapText;
-      chunk = `${cleanOverlap} ${chunk}`;
-    }
-
-    result.push(chunk.trim());
-  }
-
-  return result;
-};
-
-// Process extracted pages into metadata-bearing chunks.
-export const chunkPages = (
-    pages: ExtractedPage[],
-    chunkSize = CHUNK_SIZE,
-    chunkOverlap = CHUNK_OVERLAP
-  ): TextChunk[] => {
-    const chunks: TextChunk[] = [];
-    let globalChunkIndex = 0;
-
-    for (const page of pages) {
-      const pageChunks = createOverlappingChunks(page.text, chunkSize, chunkOverlap);
-
-      for (const content of pageChunks) {
-        if (!content) continue;
-        chunks.push({
-          content,
-          pageNumber: page.pageNumber,
-          chunkIndex: globalChunkIndex++,
-        });
+  for (const page of pages) {
+    // Split by the smallest common denominator (words/spaces) to create basic fragments
+    const baseSplits = splitRecursively(page.text, chunkSize - chunkOverlap);
+    for (const split of baseSplits) {
+      if (split) {
+        fragments.push({ text: split, pageNumber: page.pageNumber });
       }
     }
+  }
 
-    return chunks;
-  };
+  // 2. Build overlapping windows using the fragments across page lines
+  let i = 0;
+  while (i < fragments.length) {
+    let currentChunkText = "";
+    let startPageNumber = fragments[i].pageNumber;
+    let j = i;
+
+    // Expand forward until we hit the maximum chunk size limit
+    while (
+      j < fragments.length &&
+      (currentChunkText + fragments[j].text).length <= chunkSize
+    ) {
+      currentChunkText += fragments[j].text;
+      j++;
+    }
+
+    if (currentChunkText.trim()) {
+      chunks.push({
+        content: currentChunkText.trim(),
+        pageNumber: startPageNumber,
+        chunkIndex: globalChunkIndex++,
+      });
+    }
+
+    // Step forward based on overlap window size rather than resetting blindly to index j
+    // This maintains continuity across boundaries
+    const nextIndex = fragments.findIndex(
+      (f, idx) =>
+        idx > i &&
+        fragments
+          .slice(idx, j)
+          .map((f) => f.text)
+          .join("").length <= chunkOverlap,
+    );
+
+    if (nextIndex !== -1 && nextIndex < j) {
+      i = nextIndex;
+    } else {
+      i = j; // Fallback if a single fragment is massive
+    }
+
+    if (j === fragments.length && i === nextIndex) break; // Prevent infinite loops at execution completion
+  }
+
+  return chunks;
+};

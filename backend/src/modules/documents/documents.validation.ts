@@ -12,12 +12,7 @@ export const validatePdfFile = async (
     throw new Error("Only PDF files are allowed");
   }
 
-  // 2. Validate the MIME type.
-  if (file.mimetype !== PDF_MIME_TYPE) {
-    throw new Error("Invalid file type. Please upload a PDF");
-  }
-
-  // 3. Validate the PDF file signature.
+  // 2. Validate the PDF file signature.
   const fileSignature = file.buffer
     .subarray(0, PDF_SIGNATURE.length)
     .toString("ascii");
@@ -26,7 +21,7 @@ export const validatePdfFile = async (
     throw new Error("The uploaded file is not a valid PDF");
   }
 
-  // 4. Verify that the PDF can be parsed.
+  // 3. Verify that the PDF can be parsed.
   const parser = new PDFParse({
     data: file.buffer,
   });
@@ -39,7 +34,7 @@ export const validatePdfFile = async (
     await parser.destroy();
   }
 
-  // 5. Generate a SHA-256 hash for duplicate detection.
+  // 4. Generate a SHA-256 hash for duplicate detection.
   const fileHash = createHash("sha256")
     .update(file.buffer)
     .digest("hex");
