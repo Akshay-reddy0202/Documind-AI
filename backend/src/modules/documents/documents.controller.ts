@@ -7,7 +7,7 @@ import {
   deleteDocument as deleteDocumentService,
   uploadDocuments as uploadDocumentsService,
   getDocumentFile as getDocumentFileService,
-} from "./documents.service.js";
+} from "./services/documents.service.js";
 
 export const uploadDocuments = async (
   req: Request,

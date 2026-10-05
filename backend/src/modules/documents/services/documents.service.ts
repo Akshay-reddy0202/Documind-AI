@@ -1,7 +1,8 @@
-import { prisma } from "../../config/prisma.js";
-import type { UpdateDocumentInput } from "./documents.schema.js";
-import { validatePdfFile } from "./documents.validation.js";
-import { PDFParse } from "pdf-parse";
+import { prisma } from "../../../config/prisma.js";
+import type { UpdateDocumentInput } from "../documents.schema.js";
+import { validatePdfFile } from "../documents.validation.js";
+import { extractPdfPages } from "./document-extraction.service.js";
+import { documentProcessingService } from "./document-processing.factory.js";
 
 export const getDocuments = async () => {
   const documents = await prisma.document.findMany({
@@ -86,24 +87,15 @@ export const uploadDocuments = async (files: Express.Multer.File[]) => {
   const results = [];
 
   for (const file of files) {
+    let documentId: string | undefined;
+
     try {
       const { fileHash } = await validatePdfFile(file);
-      const parser = new PDFParse({
-        data: file.buffer,
-      });
-
-      let extractedText: string;
-
-      try {
-        const result = await parser.getText();
-        extractedText = result.text.trim();
-      } finally {
-        await parser.destroy();
-      }
 
       const existingDocument = await prisma.document.findFirst({
         where: {
           fileHash,
+          status: "PROCESSED",
         },
         select: {
           id: true,
@@ -119,6 +111,17 @@ export const uploadDocuments = async (files: Express.Multer.File[]) => {
 
         continue;
       }
+
+      await prisma.document.deleteMany({
+        where: {
+          fileHash,
+          status: "FAILED",
+        },
+      });
+
+      const pages = await extractPdfPages(file.buffer);
+
+      const extractedText = pages.map((page) => page.text).join("\n\n");
 
       const document = await prisma.document.create({
         data: {
@@ -140,12 +143,52 @@ export const uploadDocuments = async (files: Express.Multer.File[]) => {
         },
       });
 
+      documentId = document.id;
+
+      await prisma.document.update({
+        where: {
+          id: document.id,
+        },
+        data: {
+          status: "PROCESSING",
+        },
+      });
+
+      await documentProcessingService.processDocument(document.id, pages);
+
+      const processedDocument = await prisma.document.update({
+        where: {
+          id: document.id,
+        },
+        data: {
+          status: "PROCESSED",
+        },
+        select: {
+          id: true,
+          title: true,
+          fileName: true,
+          fileSize: true,
+          status: true,
+          createdAt: true,
+        },
+      });
       results.push({
         fileName: file.originalname,
         success: true,
-        data: document,
+        data: processedDocument,
       });
     } catch (error) {
+      if (documentId) {
+        await prisma.document.update({
+          where: {
+            id: documentId,
+          },
+          data: {
+            status: "FAILED",
+          },
+        });
+      }
+
       results.push({
         fileName: file.originalname,
         success: false,

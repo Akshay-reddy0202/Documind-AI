@@ -12,7 +12,6 @@ datasource db {
   provider = "postgresql"
 }
 
-
 enum DocumentStatus {
   UPLOADED
   PROCESSING
@@ -21,23 +20,39 @@ enum DocumentStatus {
 }
 
 model Document {
-  id          String         @id @default(cuid())
+  id          String  @id @default(cuid())
   title       String
   description String?
 
-  fileName    String
-  mimeType    String         @default("application/pdf")
-  fileSize    Int
-  fileHash    String
-  fileData    Bytes
+  fileName String
+  mimeType String @default("application/pdf")
+  fileSize Int
+  fileHash String
+  fileData Bytes
 
   extractedText String? @db.Text
 
-  status      DocumentStatus @default(UPLOADED)
+  status DocumentStatus @default(UPLOADED)
 
-  createdAt   DateTime       @default(now())
-  updatedAt   DateTime       @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  chunks DocumentChunk[]
 
   @@index([fileHash])
   @@index([status])
+}
+
+model DocumentChunk {
+  id         String                      @id @default(cuid())
+  documentId String
+  content    String
+  pageNumber Int
+  chunkIndex Int
+  embedding  Unsupported("vector(3072)")
+  createdAt  DateTime                    @default(now())
+
+  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@index([documentId])
 }

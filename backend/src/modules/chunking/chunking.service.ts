@@ -1,13 +1,4 @@
-type TextChunk = {
-  content: string;
-  pageNumber: number;
-  chunkIndex: number;
-};
-
-type ExtractedPage = {
-  pageNumber: number;
-  text: string;
-};
+import type { TextChunk, ExtractedPage } from "./chunking.types.js";
 
 const CHUNK_SIZE = 1000;
 const CHUNK_OVERLAP = 150;
