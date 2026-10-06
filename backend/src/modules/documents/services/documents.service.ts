@@ -41,7 +41,7 @@ export const getDocument = async (id: string) => {
 };
 
 export const getDocumentFile = async (id: string) => {
-  const document = prisma.document.findUnique({
+  const document = await prisma.document.findUnique({
     where: {
       id,
     },

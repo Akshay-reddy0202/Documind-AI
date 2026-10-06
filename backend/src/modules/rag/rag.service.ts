@@ -22,6 +22,13 @@ export class RagService {
 
     const chunks = await this.retrievalService.retrieve(question, limit);
 
+    if (chunks.length === 0) {
+      return {
+        answer: "No relevant information was found in the provided documents",
+        sources: [],
+      };
+    }
+
     const context = chunks.map((chunk) => chunk.content).join("\n\n");
 
     const answer = await this.llmProvider.generateAnswer(question, context);
