@@ -22,22 +22,26 @@ function ChatInput({ onSubmit, isLoading }: ChatInputProps) {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="flex gap-3">
+    <form
+      onSubmit={handleSubmit}
+      className="flex items-center gap-3 rounded-2xl border border-slate-300 bg-transparent px-3 py-2"
+    >
       <input
         type="text"
         value={question}
         onChange={(event) => setQuestion(event.target.value)}
-        placeholder="Ask a question about your documents..."
+        placeholder="Ask anything about your documents..."
         disabled={isLoading}
-        className="flex-1 rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-sm outline-none placeholder:text-slate-500 focus:border-slate-500"
+        className="min-w-0 flex-1 bg-transparent px-1 text-sm text-slate-800 outline-none placeholder:text-slate-400 disabled:cursor-not-allowed"
       />
 
       <button
         type="submit"
         disabled={isLoading || !question.trim()}
-        className="rounded-xl bg-slate-100 px-5 py-3 text-sm font-medium text-slate-900 transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-50"
+        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-600 text-sm font-medium text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-40"
+        aria-label="Send message"
       >
-        {isLoading ? "Thinking..." : "Send"}
+        ↑
       </button>
     </form>
   );

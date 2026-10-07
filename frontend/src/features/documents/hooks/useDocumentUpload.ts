@@ -1,9 +1,9 @@
 import { useState } from "react";
-import type { Document } from "../types/document.types";
+import type { DocumentSummary } from "../types/document.types";
 import { uploadDocuments } from "../api/documents.api";
 
 export const useDocumentUpload = () => {
-  const [documents, setDocuments] = useState<Document[]>([]);
+  const [documents, setDocuments] = useState<DocumentSummary[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 

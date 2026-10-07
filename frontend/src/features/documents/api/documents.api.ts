@@ -1,4 +1,7 @@
-import type { DocumentUploadResponse } from "../types/document.types";
+import type {
+  DocumentSummary,
+  DocumentUploadResponse,
+} from "../types/document.types";
 const API_URL = import.meta.env.VITE_API_URL;
 
 export const uploadDocuments = async (
@@ -19,4 +22,29 @@ export const uploadDocuments = async (
   }
 
   return response.json();
+};
+
+export const getDocuments = async (): Promise<DocumentSummary[]> => {
+  const response = await fetch(`${API_URL}/documents`);
+
+  if (!response.ok) {
+    throw new Error("Failed to fetch documents");
+  }
+
+  const result: {
+    success: boolean;
+    data: DocumentSummary[];
+  } = await response.json();
+
+  return result.data;
+};
+
+export const getDocumentFile = async (documentId: string): Promise<Blob> => {
+  const response = await fetch(`${API_URL}/documents/${documentId}/file`);
+
+  if (!response.ok) {
+    throw new Error("Failed to fetch document");
+  }
+
+  return response.blob();
 };

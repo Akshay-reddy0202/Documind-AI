@@ -20,6 +20,8 @@ export class GeminiLlmProvider implements LlmProvider {
       contents: `You are a helpful document assistant.
         Answer the user's question using only the provided context.
         If the answer cannot be found in the context, say that the information is not available in the provided documents. 
+        Answer directly and concisely. Provide enough detail to fully answer the question, but avoid unnecessary repetition.
+        Format your answer using Markdown when appropriate.
         Context:${context}
         Question:${question}
         `,
