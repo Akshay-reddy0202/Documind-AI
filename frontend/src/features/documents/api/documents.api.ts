@@ -48,3 +48,13 @@ export const getDocumentFile = async (documentId: string): Promise<Blob> => {
 
   return response.blob();
 };
+
+export const deleteDocument = async (documentId: string): Promise<void> => {
+  const response = await fetch(`${API_URL}/documents/${documentId}`, {
+    method: "DELETE",
+  });
+
+  if (!response.ok) {
+    throw new Error("Failed to delete doucment");
+  }
+};

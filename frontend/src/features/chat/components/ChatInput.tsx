@@ -24,7 +24,7 @@ function ChatInput({ onSubmit, isLoading }: ChatInputProps) {
   return (
     <form
       onSubmit={handleSubmit}
-      className="flex items-center gap-3 rounded-2xl border border-slate-300 bg-transparent px-3 py-2"
+    className="flex w-full items-center gap-3 rounded-2xl border border-slate-300 bg-white px-4 py-3 shadow-sm"
     >
       <input
         type="text"

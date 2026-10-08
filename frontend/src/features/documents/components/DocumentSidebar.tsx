@@ -3,15 +3,20 @@ import { useDocuments } from "../hooks/useDocuments";
 
 type DocumentSidebarProps = {
   onDocumentSelect: (documentId: string) => Promise<void>;
+  onDocumentDelete: (documentId: string) => void;
 };
 
-function DocumentSidebar({ onDocumentSelect }: DocumentSidebarProps) {
+function DocumentSidebar({
+  onDocumentSelect,
+  onDocumentDelete,
+}: DocumentSidebarProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [selectedDocumentId, setSelectedDocumentId] = useState<string | null>(
     null,
   );
 
-  const { documents, isLoading, error, fetchDocuments } = useDocuments();
+  const { documents, isLoading, error, fetchDocuments, removeDocument } =
+    useDocuments();
 
   const handleDocumentsClick = async () => {
     const nextIsOpen = !isOpen;
@@ -26,6 +31,11 @@ function DocumentSidebar({ onDocumentSelect }: DocumentSidebarProps) {
   const handleDocumentClick = async (documentId: string) => {
     setSelectedDocumentId(documentId);
     await onDocumentSelect(documentId);
+  };
+  
+  const handleDocumentDelete = async (documentId: string): Promise<void> => {
+    await removeDocument(documentId);
+    onDocumentDelete(documentId);
   };
 
   return (
@@ -59,18 +69,35 @@ function DocumentSidebar({ onDocumentSelect }: DocumentSidebarProps) {
           {!isLoading &&
             !error &&
             documents.map((document) => (
-              <button
+              <div
                 key={document.id}
-                type="button"
-                onClick={() => handleDocumentClick(document.id)}
-                className={`truncate rounded-lg px-3 py-2 text-left text-sm transition ${
+                className={`flex items-center gap-1 rounded-lg transition ${
                   selectedDocumentId === document.id
-                    ? "bg-slate-200 font-medium text-slate-900"
-                    : "text-slate-600 hover:bg-slate-100"
+                    ? "bg-slate-200"
+                    : "hover:bg-slate-100"
                 }`}
               >
-                {document.fileName}
-              </button>
+                <button
+                  type="button"
+                  onClick={() => handleDocumentClick(document.id)}
+                  className={`min-w-0 flex-1 truncate px-3 py-2 text-left text-sm ${
+                    selectedDocumentId === document.id
+                      ? "font-medium text-slate-900"
+                      : "text-slate-600"
+                  }`}
+                >
+                  {document.fileName}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleDocumentDelete(document.id)}
+                  className="mr-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-slate-400 transition hover:bg-red-50 hover:text-red-500"
+                  aria-label={`Delete ${document.fileName}`}
+                >
+                  ×
+                </button>
+              </div>
             ))}
         </div>
       )}

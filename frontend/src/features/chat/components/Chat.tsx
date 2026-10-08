@@ -41,8 +41,8 @@ function Chat() {
         </div>
       </div>
 
-      <div className="px-6 pb-6 pt-3">
-        <div className="mx-auto w-full max-w-3xl">
+      <div className="shrink-0 px-4 pb-4 pt-3 sm:px-6 sm:pb-6">
+      <div className="w-full">
           <ChatInput
             onSubmit={sendMessage}
             isLoading={isLoading}

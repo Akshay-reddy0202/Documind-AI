@@ -1,11 +1,31 @@
+import { useState } from "react";
 import Chat from "./features/chat/components/Chat";
 import DocumentSidebar from "./features/documents/components/DocumentSidebar";
 import DocumentUpload from "./features/documents/components/DocumentUpload";
+import DocumentWorkspace from "./features/documents/components/DocumentWorkspace";
 import { useDocumentFile } from "./features/documents/hooks/useDocumentFile";
-import DocumentViewer from "./features/documents/components/DocumentViewer";
 
 function App() {
   const { fileUrl, isLoading, error, fetchDocumentFile } = useDocumentFile();
+  const [selectedDocumentId, setSelectedDocumentId] = useState<string | null>(
+    null,
+  );
+
+  const handleDocumentSelect = async (documentId: string): Promise<void> => {
+    setSelectedDocumentId(documentId);
+    await fetchDocumentFile(documentId);
+  };
+
+  const handleDocumentClose = (): void => {
+    setSelectedDocumentId(null);
+  };
+
+  const handleDocumentDelete = (documentId: string): void => {
+    if (selectedDocumentId === documentId) {
+      setSelectedDocumentId(null);
+    }
+  };
+
   return (
     <main className="h-screen overflow-hidden bg-slate-50 text-slate-950">
       <div className="flex h-full flex-col">
@@ -15,26 +35,33 @@ function App() {
         </header>
 
         {/* Application workspace */}
-        <div className="flex min-h-0 flex-1">
-          {/* Sidebar */}
-          <aside className="w-72 shrink-0 border-r border-slate-200 bg-slate-50">
-            <div className="h-full overflow-y-auto p-4">
-              <DocumentSidebar onDocumentSelect={fetchDocumentFile} />
-              <DocumentUpload />
-            </div>
-          </aside>
+        <div className="flex min-h-0 flex-1 flex-col md:flex-row">
+          {selectedDocumentId === null ? (
+            <>
+              <aside className="w-full shrink-0 border-b border-slate-200 bg-slate-50 md:w-72 md:border-b-0 md:border-r">
+                <div className="h-full overflow-y-auto p-4">
+                  <DocumentSidebar
+                    onDocumentSelect={handleDocumentSelect}
+                    onDocumentDelete={handleDocumentDelete}
+                  />
+                  <DocumentUpload />
+                </div>
+              </aside>
 
-          {/* Main chat area */}
-          <section className="min-w-0 flex-1">
-            <div className="mx-auto h-full w-full max-w-4xl">
-              {/* <Chat /> */}
-              <DocumentViewer
-                fileUrl={fileUrl}
-                isLoading={isLoading}
-                error={error}
-              />
-            </div>
-          </section>
+              <section className="min-w-0 flex-1">
+                <div className="mx-auto h-full w-full max-w-4xl">
+                  <Chat />
+                </div>
+              </section>
+            </>
+          ) : (
+            <DocumentWorkspace
+              fileUrl={fileUrl}
+              isLoading={isLoading}
+              error={error}
+              onClose={handleDocumentClose}
+            />
+          )}
         </div>
       </div>
     </main>

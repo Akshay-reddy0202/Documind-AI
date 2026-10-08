@@ -18,7 +18,7 @@ export class PrismaDocumentChunkRepository implements DocumentChunkRepository {
   ): Promise<void> {
     const id = createId();
     const vector = `[${embedding.join(",")}]`;
-  
+
     await this.prisma.$executeRaw`
       INSERT INTO "DocumentChunk" (
         "id",
@@ -37,5 +37,18 @@ export class PrismaDocumentChunkRepository implements DocumentChunkRepository {
         ${vector}::vector
       )
     `;
+  }
+
+  async getAllChunks(): Promise<{ id: string; content: string }[]> {
+    return this.prisma.$queryRaw<
+      { id: string; content: string }[]
+    >`SELECT "id","content" FROM "DocumentChunk"`;
+  }
+
+  async updateEmbedding(chunkId: string, embedding: number[]): Promise<void> {
+    const vector = `[${embedding.join(",")}]`;
+
+    await this.prisma
+      .$executeRaw`Update "DocumentChunk" SET "embedding" = ${vector}::vector WHERE "id" = ${chunkId}`;
   }
 }

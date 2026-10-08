@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { DocumentSummary } from "../types/document.types";
-import { getDocuments } from "../api/documents.api";
+import { deleteDocument, getDocuments } from "../api/documents.api";
 
 export const useDocuments = () => {
   const [documents, setDocuments] = useState<DocumentSummary[]>([]);
@@ -24,10 +24,27 @@ export const useDocuments = () => {
     }
   };
 
+  const removeDocument = async (documentId: string): Promise<void> => {
+    setError(null);
+
+    try {
+      await deleteDocument(documentId);
+
+      setDocuments((currentDocuments) =>
+        currentDocuments.filter((document) => document.id !== documentId),
+      );
+    } catch (error) {
+      setError(
+        error instanceof Error ? error.message : "Failed to delete document",
+      );
+    }
+  };
+
   return {
     documents,
     isLoading,
     error,
     fetchDocuments,
+    removeDocument,
   };
 };

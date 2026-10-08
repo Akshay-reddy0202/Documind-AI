@@ -19,7 +19,7 @@ export class GeminiEmbeddingProvider implements EmbeddingProvider {
       
     try {
       const response = await this.ai.models.embedContent({
-        model: "gemini-embedding-2",
+        model: "gemini-embedding-001",
         contents: text,
       });
 
