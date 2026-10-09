@@ -6,6 +6,8 @@ export const chatRequestSchema = z.object({
     .trim()
     .min(1, "Question cannot be empty")
     .max(2000, "Question cannot exceed 2000 characters"),
+
+  conversationId: z.string().optional(),
 });
 
 export type ChatRequest = z.infer<typeof chatRequestSchema>;

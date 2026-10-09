@@ -6,8 +6,12 @@ const errorMiddleware = (
   err: Error,
   req: Request,
   res: Response,
-  next: NextFunction,
+  _next: NextFunction,
 ): void => {
+  if (res.headersSent) {
+    return;
+  }
+
   if (err instanceof ZodError) {
     res.status(400).json({
       success: false,
@@ -20,18 +24,24 @@ const errorMiddleware = (
     return;
   }
 
-  if (
-    err instanceof Prisma.PrismaClientKnownRequestError &&
-    err.code === "P2025"
-  ) {
-    res.status(404).json({
-      success: false,
-      message: "Document not found",
-    });
-    return;
+  if (err instanceof Prisma.PrismaClientKnownRequestError) {
+    if (err.code === "P2025") {
+      res.status(404).json({
+        success: false,
+        message: "Requested resource not found",
+      });
+      return;
+    }
+
+    if (err.code === "P2003") {
+      res.status(400).json({
+        success: false,
+        message: "Related resource does not exist",
+      });
+      return;
+    }
   }
 
-  console.error("Unhandled error:", err);
   res.status(500).json({
     success: false,
     message: "Internal server error",
