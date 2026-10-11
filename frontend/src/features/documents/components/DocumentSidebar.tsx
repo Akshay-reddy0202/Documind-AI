@@ -51,7 +51,7 @@ function DocumentSidebar({
       </button>
 
       {isOpen && (
-        <div className="flex flex-col gap-1 pl-3">
+        <div className="flex max-h-64 flex-col gap-1 overflow-y-auto pl-3">
           {isLoading && (
             <p className="px-3 py-2 text-xs text-slate-400">
               Loading documents...
