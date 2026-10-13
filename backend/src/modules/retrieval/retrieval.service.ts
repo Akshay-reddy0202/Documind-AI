@@ -18,13 +18,10 @@ export class RetrievalService {
   ): Promise<SimilarChunk[]> {
     const embedding = await this.embeddingProvider.generateEmbedding(question);
 
-    const chunks = await this.vectorSearchRepository.searchSimilarChunks(
+    return this.vectorSearchRepository.searchSimilarChunks(
       embedding,
       limit,
-    );
-
-    return chunks.filter(
-      (chunk) => chunk.distance <= DEFAULT_RETRIEVAL_DISTANCE_THRESHOLD,
+      DEFAULT_RETRIEVAL_DISTANCE_THRESHOLD,
     );
   }
 }

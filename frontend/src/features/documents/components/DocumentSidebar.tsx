@@ -1,14 +1,16 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useDocuments } from "../hooks/useDocuments";
 
 type DocumentSidebarProps = {
   onDocumentSelect: (documentId: string) => Promise<void>;
   onDocumentDelete: (documentId: string) => void;
+  refreshTrigger?: number;
 };
 
 function DocumentSidebar({
   onDocumentSelect,
   onDocumentDelete,
+  refreshTrigger,
 }: DocumentSidebarProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [selectedDocumentId, setSelectedDocumentId] = useState<string | null>(
@@ -18,9 +20,15 @@ function DocumentSidebar({
   const { documents, isLoading, error, fetchDocuments, removeDocument } =
     useDocuments();
 
+  // Re-fetch automatically whenever refreshTrigger changes (e.g. when SSE emits PROCESSED)
+  useEffect(() => {
+    if (refreshTrigger !== undefined && refreshTrigger > 0) {
+      void fetchDocuments();
+    }
+  }, [refreshTrigger]);
+
   const handleDocumentsClick = async () => {
     const nextIsOpen = !isOpen;
-
     setIsOpen(nextIsOpen);
 
     if (nextIsOpen) {
@@ -32,11 +40,20 @@ function DocumentSidebar({
     setSelectedDocumentId(documentId);
     await onDocumentSelect(documentId);
   };
-  
+
   const handleDocumentDelete = async (documentId: string): Promise<void> => {
     await removeDocument(documentId);
     onDocumentDelete(documentId);
+
+    if (selectedDocumentId === documentId) {
+      setSelectedDocumentId(null);
+    }
   };
+
+  // Only display documents that are fully processed and ready to read/chat with
+  const readyDocuments = documents.filter(
+    (document) => document.status === "PROCESSED",
+  );
 
   return (
     <div className="flex flex-col gap-2">
@@ -46,7 +63,6 @@ function DocumentSidebar({
         className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100"
       >
         <span>Documents</span>
-
         <span className="text-slate-400">{isOpen ? "⌃" : "⌄"}</span>
       </button>
 
@@ -60,7 +76,7 @@ function DocumentSidebar({
 
           {error && <p className="px-3 py-2 text-xs text-red-500">{error}</p>}
 
-          {!isLoading && !error && documents.length === 0 && (
+          {!isLoading && !error && readyDocuments.length === 0 && (
             <p className="px-3 py-2 text-xs text-slate-400">
               No documents yet.
             </p>
@@ -68,7 +84,7 @@ function DocumentSidebar({
 
           {!isLoading &&
             !error &&
-            documents.map((document) => (
+            readyDocuments.map((document) => (
               <div
                 key={document.id}
                 className={`flex items-center gap-1 rounded-lg transition ${
@@ -85,6 +101,7 @@ function DocumentSidebar({
                       ? "font-medium text-slate-900"
                       : "text-slate-600"
                   }`}
+                  title={document.fileName}
                 >
                   {document.fileName}
                 </button>

@@ -16,6 +16,8 @@ function App() {
     fetchDocumentFile,
   } = useDocumentFile();
 
+  const [documentRefreshKey, setDocumentRefreshKey] = useState(0);
+
   const {
     conversations,
     isLoading: isConversationsLoading,
@@ -86,6 +88,10 @@ function App() {
     } else {
       setIsSidebarCollapsed((prev) => !prev);
     }
+  };
+
+  const handleDocumentProcessed = (): void => {
+    setDocumentRefreshKey((prev) => prev + 1);
   };
 
   return (
@@ -182,6 +188,7 @@ function App() {
               <DocumentSidebar
                 onDocumentSelect={handleDocumentSelect}
                 onDocumentDelete={handleDocumentDelete}
+                refreshTrigger={documentRefreshKey}
               />
             </div>
 
@@ -197,7 +204,7 @@ function App() {
             </div>
 
             <div className="shrink-0 border-t border-slate-200 p-4">
-              <DocumentUpload />
+              <DocumentUpload onDocumentProcessed={handleDocumentProcessed} />
             </div>
           </aside>
 

@@ -1,8 +1,7 @@
 import { prisma } from "../../../config/prisma.js";
 import type { UpdateDocumentInput } from "../documents.schema.js";
 import { validatePdfFile } from "../documents.validation.js";
-import { extractPdfPages } from "./document-extraction.service.js";
-import { documentProcessingService } from "./document-processing.factory.js";
+import { documentQueue } from "../../../queues/document.queue.js";
 
 export const getDocuments = async () => {
   const documents = await prisma.document.findMany({
@@ -95,10 +94,13 @@ export const uploadDocuments = async (files: Express.Multer.File[]) => {
       const existingDocument = await prisma.document.findFirst({
         where: {
           fileHash,
-          status: "PROCESSED",
+          status: {
+            in: ["UPLOADED", "PROCESSING", "PROCESSED"],
+          },
         },
         select: {
           id: true,
+          status: true,
         },
       });
 
@@ -106,9 +108,8 @@ export const uploadDocuments = async (files: Express.Multer.File[]) => {
         results.push({
           fileName: file.originalname,
           success: false,
-          message: "This file has already been uploaded",
+          message: "This file has already been uploaded or is being processed",
         });
-
         continue;
       }
 
@@ -119,10 +120,6 @@ export const uploadDocuments = async (files: Express.Multer.File[]) => {
         },
       });
 
-      const pages = await extractPdfPages(file.buffer);
-
-      const extractedText = pages.map((page) => page.text).join("\n\n");
-
       const document = await prisma.document.create({
         data: {
           title: file.originalname.replace(/\.pdf$/i, ""),
@@ -131,7 +128,7 @@ export const uploadDocuments = async (files: Express.Multer.File[]) => {
           fileSize: file.size,
           fileHash,
           fileData: new Uint8Array(file.buffer),
-          extractedText,
+          status: "UPLOADED",
         },
         select: {
           id: true,
@@ -145,47 +142,21 @@ export const uploadDocuments = async (files: Express.Multer.File[]) => {
 
       documentId = document.id;
 
-      await prisma.document.update({
-        where: {
-          id: document.id,
-        },
-        data: {
-          status: "PROCESSING",
-        },
+      await documentQueue.add("process-document", {
+        documentId: document.id,
       });
 
-      await documentProcessingService.processDocument(document.id, pages);
-
-      const processedDocument = await prisma.document.update({
-        where: {
-          id: document.id,
-        },
-        data: {
-          status: "PROCESSED",
-        },
-        select: {
-          id: true,
-          title: true,
-          fileName: true,
-          fileSize: true,
-          status: true,
-          createdAt: true,
-        },
-      });
       results.push({
         fileName: file.originalname,
         success: true,
-        data: processedDocument,
+        message: "Document uploaded and queued for processing",
+        data: document,
       });
     } catch (error) {
       if (documentId) {
         await prisma.document.update({
-          where: {
-            id: documentId,
-          },
-          data: {
-            status: "FAILED",
-          },
+          where: { id: documentId },
+          data: { status: "FAILED" },
         });
       }
 
@@ -197,5 +168,6 @@ export const uploadDocuments = async (files: Express.Multer.File[]) => {
       });
     }
   }
+
   return results;
 };

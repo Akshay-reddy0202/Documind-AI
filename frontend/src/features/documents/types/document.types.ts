@@ -7,7 +7,15 @@ export type DocumentSummary = {
   status: "UPLOADED" | "PROCESSING" | "PROCESSED" | "FAILED";
 };
 
+export type DocumentUploadResult = {
+  fileName: string;
+  success: boolean;
+  message: string;
+  data: DocumentSummary;
+};
+
 export type DocumentUploadResponse = {
   success: boolean;
-  data: DocumentSummary[];
+  message: string;
+  data: DocumentUploadResult[];
 };

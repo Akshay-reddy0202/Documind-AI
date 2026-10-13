@@ -8,7 +8,8 @@
     "build": "tsc",
     "start": "node dist/server.js",
     "typecheck": "tsc --noEmit",
-    "re-embed": "tsx src/modules/scripts/re-embed-chunks.ts"
+    "re-embed": "tsx src/modules/scripts/re-embed-chunks.ts",
+    "worker": "tsx watch src/workers/worker.ts"
   },
   "keywords": [],
   "type": "module",
@@ -17,11 +18,14 @@
     "@paralleldrive/cuid2": "^3.3.0",
     "@prisma/adapter-pg": "^7.10.0",
     "@prisma/client": "^7.10.0",
+    "bullmq": "^6.3.13",
     "cors": "^2.8.6",
     "dotenv": "^18.0.4",
     "express": "^5.2.1",
     "helmet": "^8.3.0",
+    "ioredis": "^6.0.0",
     "multer": "^2.4.0",
+    "p-limit": "^7.3.3",
     "pdf-parse": "^2.4.5",
     "pg": "^8.23.0",
     "zod": "^4.6.5"

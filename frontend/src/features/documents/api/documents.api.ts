@@ -58,3 +58,33 @@ export const deleteDocument = async (documentId: string): Promise<void> => {
     throw new Error("Failed to delete doucment");
   }
 };
+
+export const subscribeToDocumentStatus = (
+  documentId: string,
+  onStatus: (event: {
+    documentId: string;
+    status: "UPLOADED" | "PROCESSING" | "PROCESSED" | "FAILED";
+  }) => void,
+  onError?: () => void,
+): (() => void) => {
+  const eventSource = new EventSource(
+    `${API_URL}/documents/${documentId}/status/stream`,
+  );
+
+  eventSource.addEventListener("document-status", (event: MessageEvent) => {
+    const data = JSON.parse(event.data) as {
+      documentId: string;
+      status: "UPLOADED" | "PROCESSING" | "PROCESSED" | "FAILED";
+    };
+
+    onStatus(data);
+  });
+
+  eventSource.onerror = () => {
+    onError?.();
+  };
+
+  return () => {
+    eventSource.close();
+  };
+};

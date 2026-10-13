@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { Conversation } from "../types/chat.types";
 import { getConversations, deleteConversation } from "../api/chat.api";
 
@@ -6,6 +6,9 @@ export const useConversations = () => {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Prevents duplicate execution during React StrictMode dev re-mounts
+  const hasFetchedRef = useRef(false);
 
   const fetchConversations = useCallback(async (): Promise<void> => {
     setIsLoading(true);
@@ -35,6 +38,9 @@ export const useConversations = () => {
   };
 
   useEffect(() => {
+    if (hasFetchedRef.current) return;
+    hasFetchedRef.current = true;
+
     void fetchConversations();
   }, [fetchConversations]);
 

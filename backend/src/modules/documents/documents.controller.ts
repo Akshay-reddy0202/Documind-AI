@@ -14,6 +14,7 @@ export const uploadDocuments = async (
   res: Response,
 ): Promise<void> => {
   const files = req.files as Express.Multer.File[];
+
   if (!files || files.length === 0) {
     errorResponse(res, 400, "Please upload at least one PDF file");
     return;
@@ -21,7 +22,18 @@ export const uploadDocuments = async (
 
   const results = await uploadDocumentsService(files);
 
-  successResponse(res, "Upload processing completed", results);
+  const hasSuccessfulUploads = results.some((result) => result.success);
+
+  if (!hasSuccessfulUploads) {
+    successResponse(res, "No documents were queued for processing", results);
+    return;
+  }
+
+  res.status(202).json({
+    success: true,
+    message: "Documents accepted for background processing",
+    data: results,
+  });
 };
 
 export const getDocuments = async (
@@ -49,9 +61,7 @@ export const getDocumentFile = async (
   req: Request,
   res: Response,
 ): Promise<void> => {
-  const document = await getDocumentFileService(
-    req.params.id as string,
-  );
+  const document = await getDocumentFileService(req.params.id as string);
 
   if (!document) {
     errorResponse(res, 404, "Document not found");

@@ -18,4 +18,4 @@ export const extractPdfPages = async (
   } finally {
     await parser.destroy();
   }
-};
+}; 

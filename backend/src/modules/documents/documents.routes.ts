@@ -10,6 +10,7 @@ import {
 import { validate } from "../../middleware/validate.middleware.js";
 import { documentIdSchema, updateDocumentSchema } from "./documents.schema.js";
 import upload from "./documents.upload.js";
+import { streamDocumentStatus } from "./document-status.controller.js";
 
 const router = Router();
 
@@ -43,5 +44,6 @@ router.patch(
 );
 
 router.delete("/:id", deleteDocument);
+router.get("/:id/status/stream", streamDocumentStatus);
 
 export default router;
