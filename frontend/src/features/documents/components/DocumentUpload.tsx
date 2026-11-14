@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { useDocumentUpload } from "../hooks/useDocumentUpload";
 
 type DocumentUploadProps = {
@@ -7,21 +7,32 @@ type DocumentUploadProps = {
 
 function DocumentUpload({ onDocumentProcessed }: DocumentUploadProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isDragOver, setIsDragOver] = useState(false);
+  const [localError, setLocalError] = useState<string | null>(null);
 
   const {
     activeUploads,
     documentStatuses,
     isUploading,
-    error,
+    error: hookError,
     upload,
     clearUploads,
   } = useDocumentUpload(onDocumentProcessed);
 
+  const error = localError ?? hookError;
+
   const handleFileChange = async (
     event: React.ChangeEvent<HTMLInputElement>,
   ) => {
+    setLocalError(null);
     const files = Array.from(event.target.files ?? []);
     if (files.length === 0) return;
+
+    if (files.length > 5) {
+      setLocalError("You can upload a maximum of 5 files at a time");
+      event.target.value = "";
+      return;
+    }
 
     await upload(files);
     event.target.value = "";
@@ -29,6 +40,56 @@ function DocumentUpload({ onDocumentProcessed }: DocumentUploadProps) {
 
   const handleUploadClick = () => {
     fileInputRef.current?.click();
+  };
+
+  const handleDragEnter = (event: React.DragEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setIsDragOver(true);
+  };
+
+  const handleDragLeave = (event: React.DragEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
+    if (!event.currentTarget.contains(event.relatedTarget as Node)) {
+      setIsDragOver(false);
+    }
+  };
+
+  const handleDragOver = (event: React.DragEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
+    event.dataTransfer.dropEffect = "copy";
+  };
+
+  const handleDrop = async (event: React.DragEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setIsDragOver(false);
+    setLocalError(null);
+
+    if (isUploading) return;
+
+    const droppedFiles = Array.from(event.dataTransfer.files);
+    const pdfFiles = droppedFiles.filter(
+      (file) =>
+        file.type === "application/pdf" ||
+        file.name.toLowerCase().endsWith(".pdf"),
+    );
+
+    if (pdfFiles.length === 0) {
+      if (droppedFiles.length > 0) {
+        setLocalError("Only PDF files are supported");
+      }
+      return;
+    }
+
+    if (pdfFiles.length > 5) {
+      setLocalError("You can upload a maximum of 5 files at a time");
+      return;
+    }
+
+    await upload(pdfFiles);
   };
 
   return (
@@ -42,16 +103,35 @@ function DocumentUpload({ onDocumentProcessed }: DocumentUploadProps) {
         onChange={handleFileChange}
       />
 
-      <button
-        type="button"
+      <div
+        onDragEnter={handleDragEnter}
+        onDragLeave={handleDragLeave}
+        onDragOver={handleDragOver}
+        onDrop={handleDrop}
         onClick={handleUploadClick}
-        disabled={isUploading}
-        className="flex w-full items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-
-allowed disabled:opacity-50"
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            handleUploadClick();
+          }
+        }}
+        className={`flex w-full cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed p-3 text-center transition ${
+          isDragOver
+            ? "border-blue-500 bg-blue-50"
+            : "border-slate-300 bg-white hover:border-slate-400 hover:bg-slate-50"
+        } ${isUploading ? "cursor-not-allowed opacity-50" : ""}`}
       >
-        <span className="text-lg leading-none">+</span>
-        {isUploading ? "Uploading..." : "Upload PDF"}
-      </button>
+        <span className="mb-1 text-base">{isDragOver ? "📥" : "📄"}</span>
+        <span className="text-xs font-medium text-slate-700">
+          {isUploading
+            ? "Uploading..."
+            : isDragOver
+              ? "Drop PDF here"
+              : "Upload or drag PDF"}
+        </span>
+        <span className="mt-0.5 text-[10px] text-slate-400">PDFs up to 5</span>
+      </div>
 
       {error && (
         <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2">
@@ -99,7 +179,7 @@ allowed disabled:opacity-50"
 
                 <div className="mt-2 flex items-center gap-2">
                   <span className={`h-2 w-2 rounded-full ${statusColor}`} />
-                  <span className="text-xs text-slate-500 capitalize">
+                  <span className="text-xs capitalize text-slate-500">
                     {status.toLowerCase()}
                   </span>
                 </div>
