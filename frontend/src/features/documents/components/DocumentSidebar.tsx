@@ -1,4 +1,6 @@
 import { useEffect, useState } from "react";
+import ConfirmDialog from "../../../components/ConfirmDialog";
+import type { DocumentSummary } from "../types/document.types";
 import { useDocuments } from "../hooks/useDocuments";
 
 type DocumentSidebarProps = {
@@ -16,6 +18,9 @@ function DocumentSidebar({
   const [selectedDocumentId, setSelectedDocumentId] = useState<string | null>(
     null,
   );
+  const [documentToDelete, setDocumentToDelete] =
+    useState<DocumentSummary | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const { documents, isLoading, error, fetchDocuments, removeDocument } =
     useDocuments();
@@ -47,6 +52,17 @@ function DocumentSidebar({
 
     if (selectedDocumentId === documentId) {
       setSelectedDocumentId(null);
+    }
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!documentToDelete) return;
+    try {
+      setIsDeleting(true);
+      await handleDocumentDelete(documentToDelete.id);
+      setDocumentToDelete(null);
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -108,7 +124,10 @@ function DocumentSidebar({
 
                 <button
                   type="button"
-                  onClick={() => handleDocumentDelete(document.id)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setDocumentToDelete(document);
+                  }}
                   className="mr-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-slate-400 transition hover:bg-red-50 hover:text-red-500"
                   aria-label={`Delete ${document.fileName}`}
                 >
@@ -118,6 +137,15 @@ function DocumentSidebar({
             ))}
         </div>
       )}
+
+      <ConfirmDialog
+        isOpen={documentToDelete !== null}
+        title="Delete Document"
+        message={`Are you sure you want to delete "${documentToDelete?.fileName}"? This will permanently remove the document and its vector embeddings.`}
+        isLoading={isDeleting}
+        onConfirm={handleConfirmDelete}
+        onClose={() => setDocumentToDelete(null)}
+      />
     </div>
   );
 }

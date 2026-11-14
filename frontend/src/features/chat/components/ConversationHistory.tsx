@@ -1,3 +1,5 @@
+import { useState } from "react";
+import ConfirmDialog from "../../../components/ConfirmDialog";
 import type { Conversation } from "../types/chat.types";
 
 type ConversationHistoryProps = {
@@ -17,6 +19,20 @@ function ConversationHistory({
   onConversationSelect,
   onConversationDelete,
 }: ConversationHistoryProps) {
+  const [conversationToDelete, setConversationToDelete] =
+    useState<Conversation | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const handleConfirmDelete = async () => {
+    if (!conversationToDelete) return;
+    try {
+      setIsDeleting(true);
+      await onConversationDelete(conversationToDelete.id);
+      setConversationToDelete(null);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
   return (
     <section className="flex min-h-0 flex-col gap-2">
       <h2 className="px-3 py-2 text-sm font-medium text-slate-700">History</h2>
@@ -58,7 +74,10 @@ function ConversationHistory({
 
               <button
                 type="button"
-                onClick={() => void onConversationDelete(conversation.id)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setConversationToDelete(conversation);
+                }}
                 className="mr-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-slate-400 transition hover:bg-red-50 hover:text-red-500"
                 aria-label={`Delete ${conversation.title}`}
               >
@@ -67,6 +86,15 @@ function ConversationHistory({
             </div>
           ))}
       </div>
+
+      <ConfirmDialog
+        isOpen={conversationToDelete !== null}
+        title="Delete Conversation"
+        message={`Are you sure you want to delete "${conversationToDelete?.title}"? This conversation and its messages will be permanently removed.`}
+        isLoading={isDeleting}
+        onConfirm={handleConfirmDelete}
+        onClose={() => setConversationToDelete(null)}
+      />
     </section>
   );
 }
