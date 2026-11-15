@@ -5,6 +5,21 @@ type DocumentUploadProps = {
   onDocumentProcessed?: (documentId: string) => void;
 };
 
+const SUPPORTED_EXTENSIONS = [
+  ".pdf",
+  ".md",
+  ".markdown",
+  ".txt",
+  ".log",
+  ".json",
+  ".csv",
+];
+
+const isSupportedFile = (file: File): boolean => {
+  const name = file.name.toLowerCase();
+  return SUPPORTED_EXTENSIONS.some((ext) => name.endsWith(ext));
+};
+
 function DocumentUpload({ onDocumentProcessed }: DocumentUploadProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDragOver, setIsDragOver] = useState(false);
@@ -28,13 +43,23 @@ function DocumentUpload({ onDocumentProcessed }: DocumentUploadProps) {
     const files = Array.from(event.target.files ?? []);
     if (files.length === 0) return;
 
-    if (files.length > 5) {
+    const validFiles = files.filter(isSupportedFile);
+
+    if (validFiles.length === 0) {
+      setLocalError(
+        "Only PDF, Markdown (.md), Text (.txt), Log (.log), JSON (.json), and CSV (.csv) files are supported",
+      );
+      event.target.value = "";
+      return;
+    }
+
+    if (validFiles.length > 5) {
       setLocalError("You can upload a maximum of 5 files at a time");
       event.target.value = "";
       return;
     }
 
-    await upload(files);
+    await upload(validFiles);
     event.target.value = "";
   };
 
@@ -71,25 +96,23 @@ function DocumentUpload({ onDocumentProcessed }: DocumentUploadProps) {
     if (isUploading) return;
 
     const droppedFiles = Array.from(event.dataTransfer.files);
-    const pdfFiles = droppedFiles.filter(
-      (file) =>
-        file.type === "application/pdf" ||
-        file.name.toLowerCase().endsWith(".pdf"),
-    );
+    const validFiles = droppedFiles.filter(isSupportedFile);
 
-    if (pdfFiles.length === 0) {
+    if (validFiles.length === 0) {
       if (droppedFiles.length > 0) {
-        setLocalError("Only PDF files are supported");
+        setLocalError(
+          "Only PDF, Markdown (.md), Text (.txt), Log (.log), JSON (.json), and CSV (.csv) files are supported",
+        );
       }
       return;
     }
 
-    if (pdfFiles.length > 5) {
+    if (validFiles.length > 5) {
       setLocalError("You can upload a maximum of 5 files at a time");
       return;
     }
 
-    await upload(pdfFiles);
+    await upload(validFiles);
   };
 
   return (
@@ -97,7 +120,7 @@ function DocumentUpload({ onDocumentProcessed }: DocumentUploadProps) {
       <input
         ref={fileInputRef}
         type="file"
-        accept="application/pdf"
+        accept=".pdf,.md,.markdown,.txt,.log,.json,.csv,application/pdf,text/plain,text/markdown,application/json,text/csv"
         multiple
         hidden
         onChange={handleFileChange}
@@ -127,10 +150,12 @@ function DocumentUpload({ onDocumentProcessed }: DocumentUploadProps) {
           {isUploading
             ? "Uploading..."
             : isDragOver
-              ? "Drop PDF here"
-              : "Upload or drag PDF"}
+              ? "Drop documents here"
+              : "Upload or drag document"}
         </span>
-        <span className="mt-0.5 text-[10px] text-slate-400">PDFs up to 5</span>
+        <span className="mt-0.5 text-[10px] text-slate-400">
+          PDF, MD, TXT, LOG, JSON, CSV (max 5)
+        </span>
       </div>
 
       {error && (

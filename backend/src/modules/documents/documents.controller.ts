@@ -16,7 +16,7 @@ export const uploadDocuments = async (
   const files = req.files as Express.Multer.File[];
 
   if (!files || files.length === 0) {
-    errorResponse(res, 400, "Please upload at least one PDF file");
+    errorResponse(res, 400, "Please upload at least one document");
     return;
   }
 

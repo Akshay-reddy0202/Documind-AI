@@ -1,7 +1,7 @@
 import { Worker } from "bullmq";
 import { prisma } from "../config/prisma.js";
 import { redisConnection } from "../config/redis.js";
-import { extractPdfPages } from "../modules/documents/services/document-extraction.service.js";
+import { extractDocumentPages } from "../modules/documents/services/document-extraction.service.js";
 import { documentProcessingService } from "../modules/documents/services/document-processing.factory.js";
 import { publishDocumentStatus } from "../modules/documents/services/document-status-events.service.js";
 
@@ -18,6 +18,7 @@ export const documentWorker = new Worker<DocumentProcessingJob>(
       where: { id: documentId },
       select: {
         id: true,
+        fileName: true,
         fileData: true,
       },
     });
@@ -41,7 +42,10 @@ export const documentWorker = new Worker<DocumentProcessingJob>(
     });
 
     try {
-      const pages = await extractPdfPages(Buffer.from(document.fileData));
+      const pages = await extractDocumentPages(
+        Buffer.from(document.fileData),
+        document.fileName,
+      );
 
       const extractedText = pages.map((page) => page.text).join("\n\n");
 
