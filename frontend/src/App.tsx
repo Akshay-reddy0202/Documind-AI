@@ -11,6 +11,9 @@ import { useDocumentFile } from "./features/documents/hooks/useDocumentFile";
 function App() {
   const {
     fileUrl,
+    textContent,
+    mimeType,
+    fileName: documentFileName,
     isLoading: isDocumentLoading,
     error: documentError,
     fetchDocumentFile,
@@ -37,10 +40,13 @@ function App() {
   const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
-  const handleDocumentSelect = async (documentId: string): Promise<void> => {
+  const handleDocumentSelect = async (
+    documentId: string,
+    fileName?: string,
+  ): Promise<void> => {
     setSelectedDocumentId(documentId);
     setIsMobileDrawerOpen(false);
-    await fetchDocumentFile(documentId);
+    await fetchDocumentFile(documentId, fileName);
   };
 
   const handleDocumentClose = (): void => {
@@ -220,6 +226,9 @@ function App() {
             ) : (
               <DocumentWorkspace
                 fileUrl={fileUrl}
+                textContent={textContent}
+                mimeType={mimeType}
+                fileName={documentFileName}
                 isLoading={isDocumentLoading}
                 error={documentError}
                 selectedConversationId={selectedConversationId}

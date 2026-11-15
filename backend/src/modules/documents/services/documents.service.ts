@@ -1,6 +1,6 @@
 import { prisma } from "../../../config/prisma.js";
 import type { UpdateDocumentInput } from "../documents.schema.js";
-import { validatePdfFile } from "../documents.validation.js";
+import { validateDocumentFile } from "../documents.validation.js";
 import { documentQueue } from "../../../queues/document.queue.js";
 
 export const getDocuments = async () => {
@@ -89,7 +89,7 @@ export const uploadDocuments = async (files: Express.Multer.File[]) => {
     let documentId: string | undefined;
 
     try {
-      const { fileHash } = await validatePdfFile(file);
+      const { fileHash, mimeType } = await validateDocumentFile(file);
 
       const existingDocument = await prisma.document.findFirst({
         where: {
@@ -122,9 +122,9 @@ export const uploadDocuments = async (files: Express.Multer.File[]) => {
 
       const document = await prisma.document.create({
         data: {
-          title: file.originalname.replace(/\.pdf$/i, ""),
+          title: file.originalname.replace(/\.[^/.]+$/, ""),
           fileName: file.originalname,
-          mimeType: file.mimetype,
+          mimeType: mimeType || file.mimetype || "text/plain",
           fileSize: file.size,
           fileHash,
           fileData: new Uint8Array(file.buffer),

@@ -4,7 +4,7 @@ import type { DocumentSummary } from "../types/document.types";
 import { useDocuments } from "../hooks/useDocuments";
 
 type DocumentSidebarProps = {
-  onDocumentSelect: (documentId: string) => Promise<void>;
+  onDocumentSelect: (documentId: string, fileName?: string) => Promise<void>;
   onDocumentDelete: (documentId: string) => void;
   refreshTrigger?: number;
 };
@@ -41,9 +41,9 @@ function DocumentSidebar({
     }
   };
 
-  const handleDocumentClick = async (documentId: string) => {
+  const handleDocumentClick = async (documentId: string, fileName?: string) => {
     setSelectedDocumentId(documentId);
-    await onDocumentSelect(documentId);
+    await onDocumentSelect(documentId, fileName);
   };
 
   const handleDocumentDelete = async (documentId: string): Promise<void> => {
@@ -111,7 +111,9 @@ function DocumentSidebar({
               >
                 <button
                   type="button"
-                  onClick={() => handleDocumentClick(document.id)}
+                  onClick={() =>
+                    handleDocumentClick(document.id, document.fileName)
+                  }
                   className={`min-w-0 flex-1 truncate px-3 py-2 text-left text-sm ${
                     selectedDocumentId === document.id
                       ? "font-medium text-slate-900"

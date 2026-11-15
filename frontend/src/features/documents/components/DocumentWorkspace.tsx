@@ -4,6 +4,9 @@ import DocumentViewer from "./DocumentViewer";
 
 type DocumentWorkspaceProps = {
   fileUrl: string | null;
+  textContent?: string | null;
+  mimeType?: string | null;
+  fileName?: string | null;
   isLoading: boolean;
   error: string | null;
   selectedConversationId: string | null;
@@ -11,8 +14,35 @@ type DocumentWorkspaceProps = {
   onClose: () => void;
 };
 
+const getBadgeInfo = (fileName?: string | null, mimeType?: string | null) => {
+  const name = fileName?.toLowerCase() ?? "";
+  if (name.endsWith(".pdf") || mimeType === "application/pdf") {
+    return { label: "PDF", bg: "bg-blue-50", text: "text-blue-600" };
+  }
+  if (
+    name.endsWith(".md") ||
+    name.endsWith(".markdown") ||
+    mimeType?.includes("markdown")
+  ) {
+    return { label: "MD", bg: "bg-purple-50", text: "text-purple-600" };
+  }
+  if (name.endsWith(".json") || mimeType === "application/json") {
+    return { label: "JSON", bg: "bg-emerald-50", text: "text-emerald-600" };
+  }
+  if (name.endsWith(".csv") || mimeType === "text/csv") {
+    return { label: "CSV", bg: "bg-amber-50", text: "text-amber-600" };
+  }
+  if (name.endsWith(".log")) {
+    return { label: "LOG", bg: "bg-rose-50", text: "text-rose-600" };
+  }
+  return { label: "TXT", bg: "bg-slate-100", text: "text-slate-600" };
+};
+
 function DocumentWorkspace({
   fileUrl,
+  textContent,
+  mimeType,
+  fileName,
   isLoading,
   error,
   selectedConversationId,
@@ -22,6 +52,8 @@ function DocumentWorkspace({
   const [activePanel, setActivePanel] = useState<"document" | "chat">(
     "document",
   );
+
+  const badge = getBadgeInfo(fileName, mimeType);
 
   return (
     <section className="flex min-h-0 min-w-0 flex-1 flex-col">
@@ -34,12 +66,17 @@ function DocumentWorkspace({
         >
           {/* Dedicated Document Header */}
           <header className="flex h-12 shrink-0 items-center justify-between border-b border-slate-200 bg-white px-4">
-            <div className="flex items-center gap-2 min-w-0">
-              <span className="flex h-6 w-6 items-center justify-center rounded-md bg-blue-50 text-xs font-semibold text-blue-600">
-                PDF
+            <div className="flex min-w-0 items-center gap-2">
+              <span
+                className={`flex h-6 min-w-8 items-center justify-center rounded-md px-1.5 text-[11px] font-bold ${badge.bg} ${badge.text}`}
+              >
+                {badge.label}
               </span>
-              <span className="truncate text-sm font-medium text-slate-800">
-                Document Viewer
+              <span
+                className="truncate text-sm font-medium text-slate-800"
+                title={fileName ?? "Document Viewer"}
+              >
+                {fileName ?? "Document Viewer"}
               </span>
             </div>
 
@@ -58,6 +95,9 @@ function DocumentWorkspace({
           <div className="min-h-0 flex-1">
             <DocumentViewer
               fileUrl={fileUrl}
+              textContent={textContent}
+              mimeType={mimeType}
+              fileName={fileName}
               isLoading={isLoading}
               error={error}
             />
