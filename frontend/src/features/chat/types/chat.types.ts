@@ -8,6 +8,7 @@ export type ChatSource = {
   documentId: string;
   pageNumber: number;
   chunkIndex: number;
+  matchSource?: "vector" | "keyword" | "hybrid";
 };
 
 export type ChatResponse = {

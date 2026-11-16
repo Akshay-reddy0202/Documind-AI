@@ -58,6 +58,7 @@ export const chat = async (
         documentId: source.documentId,
         pageNumber: source.pageNumber,
         chunkIndex: source.chunkIndex,
+        matchSource: source.matchSource,
       })),
     },
   });

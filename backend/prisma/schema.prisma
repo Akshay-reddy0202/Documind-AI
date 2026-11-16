@@ -34,13 +34,20 @@ model Document {
 
   status DocumentStatus @default(UPLOADED)
 
+  clientId        String?
+  clientName      String?
+  environment     String?
+  reportingPeriod String?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   chunks DocumentChunk[]
+  issues Issue[]
 
   @@index([fileHash])
   @@index([status])
+  @@index([clientId])
 }
 
 model DocumentChunk {
@@ -55,6 +62,31 @@ model DocumentChunk {
   document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
 
   @@index([documentId])
+}
+
+model Issue {
+  id              String    @id @default(cuid())
+  documentId      String
+  issueCode       String
+  title           String
+  severity        String
+  component       String
+  firstObservedAt DateTime?
+  status          String    @default("OPEN")
+  description     String    @db.Text
+  logSnippet      String?   @db.Text
+  workaround      String?   @db.Text
+  resolution      String?   @db.Text
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  document        Document  @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@index([documentId])
+  @@index([issueCode])
+  @@index([status])
+  @@index([severity])
 }
 
 model Conversation {

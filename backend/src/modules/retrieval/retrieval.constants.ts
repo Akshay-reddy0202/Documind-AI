@@ -1,2 +1,3 @@
 export const DEFAULT_RETRIEVAL_LIMIT = 10;
 export const DEFAULT_RETRIEVAL_DISTANCE_THRESHOLD = 0.5;
+export const DEFAULT_RRF_K = 60;
