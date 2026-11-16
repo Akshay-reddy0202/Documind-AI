@@ -1,5 +1,5 @@
 import type { LlmProvider } from "../llm/llm.provider.js";
-import type { SimilarChunk } from "../retrieval/retrieval.types.js";
+import type { FusedChunk } from "../retrieval/retrieval.types.js";
 import type { RetrievalService } from "../retrieval/retrieval.service.js";
 import { DEFAULT_RETRIEVAL_LIMIT } from "../retrieval/retrieval.constants.js";
 
@@ -14,7 +14,7 @@ export class RagService {
     limit: number = DEFAULT_RETRIEVAL_LIMIT,
   ): Promise<{
     answer: string;
-    sources: SimilarChunk[];
+    sources: FusedChunk[];
   }> {
     if (!question.trim()) {
       throw new Error("Question cannot be empty");
