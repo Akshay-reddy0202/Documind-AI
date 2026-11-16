@@ -1,15 +1,5 @@
-import { Response } from "express";
-
-type ApiSuccessResponse<T> = {
-  success: true;
-  message: string;
-  data: T;
-};
-
-type ApiErrorResponse = {
-  success: false;
-  message: string;
-};
+import type { Response } from "express";
+import type { ApiSuccessResponse, ApiErrorResponse } from "../types/api.types.js";
 
 export const successResponse = <T>(
   res: Response,

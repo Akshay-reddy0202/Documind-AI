@@ -1,5 +1,5 @@
 import type { Request, Response } from "express";
-import type { ChatRequest } from "./chat.schema.js";
+import type { ChatRequest, ChatResponseData } from "./chat.types.js";
 import { ragService } from "../rag/rag.factory.js";
 import { chatRequestSchema } from "./chat.schema.js";
 import { ConversationRepository } from "./repositories/conversation.repository.js";

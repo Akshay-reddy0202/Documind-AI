@@ -1,10 +1,8 @@
-
 import { Queue } from "bullmq";
 import { redisConnection } from "../config/redis.js";
+import type { DocumentProcessingJob } from "./queue.types.js";
 
-export interface DocumentProcessingJob {
-  documentId: string;
-}
+export type { DocumentProcessingJob };
 
 export const documentQueue = new Queue<DocumentProcessingJob>(
   "document-processing",

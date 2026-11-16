@@ -4,10 +4,8 @@ import { redisConnection } from "../config/redis.js";
 import { extractDocumentPages } from "../modules/documents/services/document-extraction.service.js";
 import { documentProcessingService } from "../modules/documents/services/document-processing.factory.js";
 import { publishDocumentStatus } from "../modules/documents/services/document-status-events.service.js";
-
-interface DocumentProcessingJob {
-  documentId: string;
-}
+import { processReportExtraction } from "../modules/documents/services/report-extraction.service.js";
+import type { DocumentProcessingJob } from "../queues/queue.types.js";
 
 export const documentWorker = new Worker<DocumentProcessingJob>(
   "document-processing",
@@ -53,6 +51,16 @@ export const documentWorker = new Worker<DocumentProcessingJob>(
         where: { id: documentId },
         data: { extractedText },
       });
+
+      // Extract client metadata and structured issues if this is an incident report
+      try {
+        await processReportExtraction(documentId, extractedText);
+      } catch (extractionError) {
+        console.warn(
+          `Report metadata/issue extraction skipped for document ${documentId}:`,
+          extractionError,
+        );
+      }
 
       await prisma.documentChunk.deleteMany({
         where: { documentId },

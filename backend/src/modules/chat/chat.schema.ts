@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { ChatRequest } from "./chat.types.js";
 
 export const chatRequestSchema = z.object({
   question: z
@@ -10,4 +11,4 @@ export const chatRequestSchema = z.object({
   conversationId: z.string().optional(),
 });
 
-export type ChatRequest = z.infer<typeof chatRequestSchema>;
+export type { ChatRequest };
