@@ -1,10 +1,6 @@
-export interface DocumentChunkInput {
-  documentId: string;
-  content: string;
-  pageNumber: number;
-  chunkIndex: number;
-  embedding: number[];
-}
+import type { DocumentChunkInput } from "../types/index.js";
+
+export type { DocumentChunkInput };
 
 export interface DocumentChunkRepository {
   createChunk(
