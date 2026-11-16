@@ -12,6 +12,10 @@ export const getDocuments = async () => {
       fileName: true,
       fileSize: true,
       status: true,
+      clientId: true,
+      clientName: true,
+      environment: true,
+      reportingPeriod: true,
       createdAt: true,
     },
     orderBy: {
@@ -33,7 +37,12 @@ export const getDocument = async (id: string) => {
       fileName: true,
       fileSize: true,
       status: true,
+      clientId: true,
+      clientName: true,
+      environment: true,
+      reportingPeriod: true,
       createdAt: true,
+      issues: true,
     },
   });
   return document;
