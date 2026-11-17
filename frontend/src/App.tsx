@@ -139,17 +139,6 @@ function App() {
               )}
             </div>
           </div>
-
-          {selectedDocumentId && (
-            <button
-              type="button"
-              onClick={handleDocumentClose}
-              className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-600 transition hover:bg-slate-100 hover:text-slate-900"
-            >
-              <span>✕</span>
-              <span className="hidden sm:inline">Close Document</span>
-            </button>
-          )}
         </header>
 
         {/* Main Layout Area */}
