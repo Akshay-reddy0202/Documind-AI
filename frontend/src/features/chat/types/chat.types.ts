@@ -11,6 +11,15 @@ export type ChatSource = {
   matchSource?: "vector" | "keyword" | "hybrid";
 };
 
+export type ChatIssueCitation = {
+  id: string;
+  issueCode: string;
+  title: string;
+  severity: string;
+  status: string;
+  clientName: string | null;
+};
+
 export type ChatResponse = {
   success: boolean;
   data: {
@@ -18,6 +27,7 @@ export type ChatResponse = {
     title: string;
     answer: string;
     sources: ChatSource[];
+    relatedIssues?: ChatIssueCitation[];
   };
 };
 

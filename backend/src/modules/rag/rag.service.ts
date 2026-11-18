@@ -1,12 +1,15 @@
 import type { LlmProvider } from "../llm/llm.provider.js";
 import type { FusedChunk } from "../retrieval/retrieval.types.js";
 import type { RetrievalService } from "../retrieval/retrieval.service.js";
+import type { IssueRetrievalService } from "./services/issue-retrieval.service.js";
+import type { IssueListItem } from "../issues/types/index.js";
 import { DEFAULT_RETRIEVAL_LIMIT } from "../retrieval/retrieval.constants.js";
 
 export class RagService {
   constructor(
     private readonly retrievalService: RetrievalService,
     private readonly llmProvider: LlmProvider,
+    private readonly issueRetrievalService?: IssueRetrievalService,
   ) {}
 
   async answerQuestion(
@@ -15,27 +18,77 @@ export class RagService {
   ): Promise<{
     answer: string;
     sources: FusedChunk[];
+    relatedIssues: IssueListItem[];
   }> {
     if (!question.trim()) {
       throw new Error("Question cannot be empty");
     }
 
-    const chunks = await this.retrievalService.retrieve(question, limit);
+    const trimmedQuestion = question.trim();
 
-    if (chunks.length === 0) {
+    // 1. Retrieve hybrid chunks (Vector + GIN Lexical + RRF)
+    const chunks = await this.retrievalService.retrieve(trimmedQuestion, limit);
+
+    // 2. Retrieve relevant structured issues from PostgreSQL
+    let relatedIssues: IssueListItem[] = [];
+    if (this.issueRetrievalService) {
+      try {
+        const uniqueDocIds = Array.from(new Set(chunks.map((c) => c.documentId)));
+        relatedIssues = await this.issueRetrievalService.retrieveRelevantIssues(
+          trimmedQuestion,
+          uniqueDocIds,
+          5,
+        );
+      } catch (issueError) {
+        console.warn("Issue retrieval failed, proceeding with chunk context only:", issueError);
+      }
+    }
+
+    if (chunks.length === 0 && relatedIssues.length === 0) {
       return {
-        answer: "No relevant information was found in the provided documents",
+        answer: "No relevant information was found in the provided documents or issues",
         sources: [],
+        relatedIssues: [],
       };
     }
 
-    const context = chunks.map((chunk) => chunk.content).join("\n\n");
+    // 3. Assemble dual-stream context (Structured Entities + Unstructured Chunks)
+    const contextSections: string[] = [];
 
-    const answer = await this.llmProvider.generateAnswer(question, context);
+    if (relatedIssues.length > 0) {
+      contextSections.push("=== STRUCTURED CLIENT ISSUES (FROM DATABASE) ===");
+      for (const issue of relatedIssues) {
+        const client =
+          issue.document.clientName ?? issue.document.clientId ?? "Unassigned Client";
+        const env = issue.document.environment ? ` [Env: ${issue.document.environment}]` : "";
+        const period = issue.document.reportingPeriod ? ` [Period: ${issue.document.reportingPeriod}]` : "";
+        contextSections.push(
+          `• Issue Code: [${issue.issueCode}] ${issue.title}
+  Client: ${client}${env}${period} | Component: ${issue.component}
+  Severity: ${issue.severity} | Status: ${issue.status}
+  Description: ${issue.description}
+  Workaround: ${issue.workaround ?? "None reported"}
+  Resolution: ${issue.resolution ?? "None reported"}`
+        );
+      }
+    }
+
+    if (chunks.length > 0) {
+      contextSections.push("=== VERBATIM DOCUMENT CHUNKS & LOG EVIDENCE ===");
+      for (const chunk of chunks) {
+        contextSections.push(chunk.content);
+      }
+    }
+
+    const combinedContext = contextSections.join("\n\n");
+
+    // 4. Generate grounded answer
+    const answer = await this.llmProvider.generateAnswer(trimmedQuestion, combinedContext);
 
     return {
       answer,
       sources: chunks,
+      relatedIssues,
     };
   }
 }

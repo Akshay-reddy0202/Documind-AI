@@ -60,6 +60,14 @@ export const chat = async (
         chunkIndex: source.chunkIndex,
         matchSource: source.matchSource,
       })),
+      relatedIssues: result.relatedIssues?.map((issue) => ({
+        id: issue.id,
+        issueCode: issue.issueCode,
+        title: issue.title,
+        severity: issue.severity,
+        status: issue.status,
+        clientName: issue.document.clientName,
+      })),
     },
   });
 };
