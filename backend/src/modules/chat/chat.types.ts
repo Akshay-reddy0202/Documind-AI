@@ -10,11 +10,21 @@ export interface ChatSourceCitation {
   matchSource?: "vector" | "keyword" | "hybrid";
 }
 
+export interface ChatIssueCitation {
+  id: string;
+  issueCode: string;
+  title: string;
+  severity: string;
+  status: string;
+  clientName: string | null;
+}
+
 export interface ChatResponseData {
   conversationId: string;
   title: string;
   answer: string;
   sources: ChatSourceCitation[];
+  relatedIssues?: ChatIssueCitation[];
 }
 
 export interface ConversationHistoryMessage {
