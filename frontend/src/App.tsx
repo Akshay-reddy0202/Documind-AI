@@ -7,8 +7,10 @@ import DocumentSidebar from "./features/documents/components/DocumentSidebar";
 import DocumentUpload from "./features/documents/components/DocumentUpload";
 import DocumentWorkspace from "./features/documents/components/DocumentWorkspace";
 import { useDocumentFile } from "./features/documents/hooks/useDocumentFile";
+import { IssueExplorer } from "./features/issues/components/IssueExplorer";
 
 function App() {
+  const [activeView, setActiveView] = useState<"workspace" | "issues">("workspace");
   const {
     fileUrl,
     textContent,
@@ -132,12 +134,39 @@ function App() {
               <h1 className="text-base font-semibold tracking-tight text-slate-900">
                 DocuMind AI
               </h1>
-              {selectedDocumentId && (
+              {selectedDocumentId && activeView === "workspace" && (
                 <span className="hidden items-center rounded-md bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700 ring-1 ring-inset ring-blue-700/10 sm:inline-flex">
                   Document Mode
                 </span>
               )}
             </div>
+          </div>
+
+          {/* View Mode Switcher */}
+          <div className="flex items-center rounded-lg bg-slate-100 p-1 text-xs font-medium text-slate-600">
+            <button
+              type="button"
+              onClick={() => setActiveView("workspace")}
+              className={`rounded-md px-3 py-1 transition ${
+                activeView === "workspace"
+                  ? "bg-white text-slate-900 shadow-2xs font-semibold"
+                  : "hover:text-slate-900"
+              }`}
+            >
+              Documents & Chat
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveView("issues")}
+              className={`flex items-center gap-1.5 rounded-md px-3 py-1 transition ${
+                activeView === "issues"
+                  ? "bg-white text-slate-900 shadow-2xs font-semibold"
+                  : "hover:text-slate-900"
+              }`}
+            >
+              <span>Issue Explorer</span>
+              <span className="flex h-2 w-2 rounded-full bg-red-500" />
+            </button>
           </div>
         </header>
 
@@ -155,7 +184,7 @@ function App() {
           {/* Sidebar */}
           <aside
             className={`fixed inset-y-0 left-0 z-50 flex w-72 flex-col border-r border-slate-200 bg-slate-50 transition-transform duration-200 ease-in-out lg:static lg:z-auto ${
-              isSidebarCollapsed ? "lg:hidden" : "lg:flex"
+              activeView === "issues" || isSidebarCollapsed ? "lg:hidden" : "lg:flex"
             } ${
               isMobileDrawerOpen
                 ? "translate-x-0 shadow-2xl lg:shadow-none"
@@ -203,29 +232,44 @@ function App() {
             </div>
           </aside>
 
-          {/* Workspace content (Chat or DocumentWorkspace) */}
-          <section className="flex min-h-0 min-w-0 flex-1 flex-col">
-            {selectedDocumentId === null ? (
-              <div className="mx-auto h-full w-full max-w-4xl">
-                <Chat
+          {/* Main Content Area */}
+          {activeView === "issues" ? (
+            <section className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+              <IssueExplorer
+                onOpenDocument={(docId, fileName) => {
+                  setActiveView("workspace");
+                  void handleDocumentSelect(docId, fileName);
+                }}
+                onSwitchToChat={() => {
+                  setActiveView("workspace");
+                  handleNewChat();
+                }}
+              />
+            </section>
+          ) : (
+            <section className="flex min-h-0 min-w-0 flex-1 flex-col">
+              {selectedDocumentId === null ? (
+                <div className="mx-auto h-full w-full max-w-4xl">
+                  <Chat
+                    selectedConversationId={selectedConversationId}
+                    onConversationCreated={handleConversationCreated}
+                  />
+                </div>
+              ) : (
+                <DocumentWorkspace
+                  fileUrl={fileUrl}
+                  textContent={textContent}
+                  mimeType={mimeType}
+                  fileName={documentFileName}
+                  isLoading={isDocumentLoading}
+                  error={documentError}
                   selectedConversationId={selectedConversationId}
                   onConversationCreated={handleConversationCreated}
+                  onClose={handleDocumentClose}
                 />
-              </div>
-            ) : (
-              <DocumentWorkspace
-                fileUrl={fileUrl}
-                textContent={textContent}
-                mimeType={mimeType}
-                fileName={documentFileName}
-                isLoading={isDocumentLoading}
-                error={documentError}
-                selectedConversationId={selectedConversationId}
-                onConversationCreated={handleConversationCreated}
-                onClose={handleDocumentClose}
-              />
-            )}
-          </section>
+              )}
+            </section>
+          )}
         </div>
       </div>
     </main>
