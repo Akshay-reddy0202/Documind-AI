@@ -45,6 +45,19 @@ export class RagService {
     }
 
     if (chunks.length === 0 && relatedIssues.length === 0) {
+      const isGreeting = /^(hello|hi|hey|greetings|who are you|what'?s up|help|what can you do)[\s!?.]*$/i.test(trimmedQuestion);
+      if (isGreeting) {
+        const greetingAnswer = await this.llmProvider.generateAnswer(
+          trimmedQuestion,
+          "User is greeting or asking for an introduction. No specific document context required.",
+        );
+        return {
+          answer: greetingAnswer,
+          sources: [],
+          relatedIssues: [],
+        };
+      }
+
       return {
         answer: "No relevant information was found in the provided documents or issues",
         sources: [],
