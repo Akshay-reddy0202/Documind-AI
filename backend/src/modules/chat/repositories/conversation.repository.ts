@@ -47,6 +47,27 @@ export class ConversationRepository {
     return history;
   }
 
+  async getRecentConversationTurns(
+    conversationId: string,
+    turnLimit: number = 2,
+  ) {
+    const messages = await this.prisma.message.findMany({
+      where: {
+        conversationId,
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+      take: turnLimit * 2,
+    });
+
+    return messages.reverse().map((m) => ({
+      role: m.role,
+      content:
+        m.content.length > 1000 ? `${m.content.slice(0, 1000)}...` : m.content,
+    }));
+  }
+
   async getConversationById(conversationId: string) {
     const conversation = await this.prisma.conversation.findUnique({
       where: {

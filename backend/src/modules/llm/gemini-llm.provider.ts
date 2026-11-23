@@ -1,6 +1,6 @@
 import { GoogleGenAI } from "@google/genai";
 import "dotenv/config";
-import type { LlmProvider } from "./llm.provider.js";
+import type { ChatHistoryTurn, LlmProvider } from "./llm.provider.js";
 
 export class GeminiLlmProvider implements LlmProvider {
   private readonly ai: GoogleGenAI;
@@ -12,7 +12,22 @@ export class GeminiLlmProvider implements LlmProvider {
     });
   }
 
-  async generateAnswer(question: string, context: string): Promise<string> {
+  async generateAnswer(
+    question: string,
+    context: string,
+    history?: ChatHistoryTurn[],
+  ): Promise<string> {
+    const historySection =
+      history && history.length > 0
+        ? `\n\nPrevious Conversation Context (Use strictly to resolve references, follow-ups, and pronouns. If the current question introduces a new topic, do not blend prior unrelated issues):\n` +
+          history
+            .map(
+              (h) =>
+                `${h.role === "USER" ? "User" : "Assistant"}: ${h.content}`,
+            )
+            .join("\n\n")
+        : "";
+
     const prompt = `You are a Senior Technical Systems & Incident Investigation Assistant for DocuMind AI.
 Answer the user's question using the provided context (Structured Issues and Verbatim Document Evidence).
 
@@ -23,6 +38,7 @@ CORE GUIDELINES:
 4. HONESTY ABOUT GAPS: If information is missing, truncated, or unverified in the documents, state that clearly rather than guessing.
 5. ADAPTIVE FORMATTING: Format your response dynamically and naturally based on the question. Use clean, readable Markdown (bullet points, bold text, code blocks for logs) without forcing rigid template headers.
 6. CONVERSATIONAL & GENERAL QUERIES: If the user offers a greeting (e.g. "hello", "hi", "hey", "what's up"), asks who you are, or makes casual conversation, respond warmly and conversationally as DocuMind AI. Introduce yourself as their AI assistant for document intelligence and technical incident investigation, and invite them to ask about their uploaded documents or client reports.
+7. MULTI-TURN RESOLUTION: Use the provided conversation history solely to resolve pronouns, references, and follow-ups. If the user introduces a new topic, answer the new question directly based on the fresh context without carrying over unrelated prior issues.${historySection}
 
 Context:
 ${context}
