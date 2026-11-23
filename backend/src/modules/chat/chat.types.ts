@@ -34,3 +34,8 @@ export interface ConversationHistoryMessage {
   content: string;
   createdAt: Date;
 }
+
+export interface ChatHistoryTurn {
+  role: "USER" | "ASSISTANT";
+  content: string;
+}

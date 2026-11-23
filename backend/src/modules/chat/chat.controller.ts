@@ -13,6 +13,7 @@ export const chat = async (
   const { question, conversationId } = chatRequestSchema.parse(req.body);
 
   let conversation;
+  let recentHistory: { role: "USER" | "ASSISTANT"; content: string }[] = [];
 
   if (conversationId) {
     conversation =
@@ -24,6 +25,12 @@ export const chat = async (
         message: "Conversation not found",
       });
     }
+
+    // Fetch the last 2 turns (4 messages) before recording the new question
+    recentHistory = await conversationRepository.getRecentConversationTurns(
+      conversation.id,
+      2,
+    );
   } else {
     conversation = await conversationRepository.createConversation();
     const trimmedQuestion = question.trim();
@@ -40,7 +47,7 @@ export const chat = async (
 
   await conversationRepository.saveMessage(conversation.id, "USER", question);
 
-  const result = await ragService.answerQuestion(question);
+  const result = await ragService.answerQuestion(question, recentHistory);
 
   await conversationRepository.saveMessage(
     conversation.id,

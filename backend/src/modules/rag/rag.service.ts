@@ -1,7 +1,8 @@
-import type { LlmProvider } from "../llm/llm.provider.js";
+import type { ChatHistoryTurn, LlmProvider } from "../llm/llm.provider.js";
 import type { FusedChunk } from "../retrieval/retrieval.types.js";
 import type { RetrievalService } from "../retrieval/retrieval.service.js";
 import type { IssueRetrievalService } from "./services/issue-retrieval.service.js";
+import type { QueryRewriterService } from "./services/query-rewriter.service.js";
 import type { IssueListItem } from "../issues/types/index.js";
 import { DEFAULT_RETRIEVAL_LIMIT } from "../retrieval/retrieval.constants.js";
 
@@ -10,32 +11,68 @@ export class RagService {
     private readonly retrievalService: RetrievalService,
     private readonly llmProvider: LlmProvider,
     private readonly issueRetrievalService?: IssueRetrievalService,
+    private readonly queryRewriter?: QueryRewriterService,
   ) {}
 
   async answerQuestion(
     question: string,
-    limit: number = DEFAULT_RETRIEVAL_LIMIT,
+    historyOrLimit?: ChatHistoryTurn[] | number,
+    maybeLimit?: number,
   ): Promise<{
     answer: string;
     sources: FusedChunk[];
     relatedIssues: IssueListItem[];
+    searchQuery?: string;
   }> {
     if (!question.trim()) {
       throw new Error("Question cannot be empty");
     }
 
+    const history: ChatHistoryTurn[] | undefined = Array.isArray(historyOrLimit)
+      ? historyOrLimit
+      : undefined;
+
+    const limit: number =
+      typeof historyOrLimit === "number"
+        ? historyOrLimit
+        : (maybeLimit ?? DEFAULT_RETRIEVAL_LIMIT);
+
     const trimmedQuestion = question.trim();
 
-    // 1. Retrieve hybrid chunks (Vector + GIN Lexical + RRF)
-    const chunks = await this.retrievalService.retrieve(trimmedQuestion, limit);
+    // Fast-path bypass for greetings & conversational queries (skips DB queries & embeddings)
+    const isGreeting =
+      /^(hello|hi|hey|greetings|who are you|what'?s up|help|what can you do)[\s!?.]*$/i.test(
+        trimmedQuestion,
+      );
+    if (isGreeting) {
+      const greetingAnswer = await this.llmProvider.generateAnswer(
+        trimmedQuestion,
+        "User is greeting or asking for an introduction. No specific document context required.",
+        history,
+      );
+      return {
+        answer: greetingAnswer,
+        sources: [],
+        relatedIssues: [],
+        searchQuery: trimmedQuestion,
+      };
+    }
 
-    // 2. Retrieve relevant structured issues from PostgreSQL
+    // Optimize search query using history (e.g. resolving pronouns/references)
+    const searchQuery = this.queryRewriter
+      ? await this.queryRewriter.rewrite(trimmedQuestion, history)
+      : trimmedQuestion;
+
+    // 1. Retrieve hybrid chunks (Vector + GIN Lexical + RRF) using the search query
+    const chunks = await this.retrievalService.retrieve(searchQuery, limit);
+
+    // 2. Retrieve relevant structured issues from PostgreSQL using the search query
     let relatedIssues: IssueListItem[] = [];
     if (this.issueRetrievalService) {
       try {
         const uniqueDocIds = Array.from(new Set(chunks.map((c) => c.documentId)));
         relatedIssues = await this.issueRetrievalService.retrieveRelevantIssues(
-          trimmedQuestion,
+          searchQuery,
           uniqueDocIds,
           5,
         );
@@ -45,23 +82,12 @@ export class RagService {
     }
 
     if (chunks.length === 0 && relatedIssues.length === 0) {
-      const isGreeting = /^(hello|hi|hey|greetings|who are you|what'?s up|help|what can you do)[\s!?.]*$/i.test(trimmedQuestion);
-      if (isGreeting) {
-        const greetingAnswer = await this.llmProvider.generateAnswer(
-          trimmedQuestion,
-          "User is greeting or asking for an introduction. No specific document context required.",
-        );
-        return {
-          answer: greetingAnswer,
-          sources: [],
-          relatedIssues: [],
-        };
-      }
-
       return {
-        answer: "No relevant information was found in the provided documents or issues",
+        answer:
+          "No relevant information was found in the provided documents or issues",
         sources: [],
         relatedIssues: [],
+        searchQuery,
       };
     }
 
@@ -95,13 +121,18 @@ export class RagService {
 
     const combinedContext = contextSections.join("\n\n");
 
-    // 4. Generate grounded answer
-    const answer = await this.llmProvider.generateAnswer(trimmedQuestion, combinedContext);
+    // 4. Generate grounded answer passing original question + evidence + conversation history
+    const answer = await this.llmProvider.generateAnswer(
+      trimmedQuestion,
+      combinedContext,
+      history,
+    );
 
     return {
       answer,
       sources: chunks,
       relatedIssues,
+      searchQuery,
     };
   }
 }
