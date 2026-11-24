@@ -9,4 +9,11 @@ export interface LlmProvider {
     context: string,
     history?: ChatHistoryTurn[],
   ): Promise<string>;
+
+  generateAnswerStream(
+    question: string,
+    context: string,
+    history?: ChatHistoryTurn[],
+    onToken?: (token: string) => void,
+  ): Promise<string>;
 }

@@ -20,6 +20,11 @@ function ChatMessage({ message }: ChatMessageProps) {
       >
         {isUser ? (
           message.content
+        ) : message.content === "" ? (
+          <div className="flex items-center gap-2 py-1 text-slate-400">
+            <span className="h-2 w-2 animate-ping rounded-full bg-blue-500" />
+            <span className="text-xs font-medium">Thinking...</span>
+          </div>
         ) : (
           <ReactMarkdown
             remarkPlugins={[remarkGfm]}

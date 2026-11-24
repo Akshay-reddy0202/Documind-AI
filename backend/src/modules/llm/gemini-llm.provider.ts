@@ -12,11 +12,11 @@ export class GeminiLlmProvider implements LlmProvider {
     });
   }
 
-  async generateAnswer(
+  private buildPrompt(
     question: string,
     context: string,
     history?: ChatHistoryTurn[],
-  ): Promise<string> {
+  ): string {
     const historySection =
       history && history.length > 0
         ? `\n\nPrevious Conversation Context (Use strictly to resolve references, follow-ups, and pronouns. If the current question introduces a new topic, do not blend prior unrelated issues):\n` +
@@ -28,7 +28,7 @@ export class GeminiLlmProvider implements LlmProvider {
             .join("\n\n")
         : "";
 
-    const prompt = `You are a Senior Technical Systems & Incident Investigation Assistant for DocuMind AI.
+    return `You are a Senior Technical Systems & Incident Investigation Assistant for DocuMind AI.
 Answer the user's question using the provided context (Structured Issues and Verbatim Document Evidence).
 
 CORE GUIDELINES:
@@ -45,12 +45,29 @@ ${context}
 
 Question:
 ${question}`;
+  }
+
+  async generateAnswer(
+    question: string,
+    context: string,
+    history?: ChatHistoryTurn[],
+  ): Promise<string> {
+    return this.generateAnswerStream(question, context, history);
+  }
+
+  async generateAnswerStream(
+    question: string,
+    context: string,
+    history?: ChatHistoryTurn[],
+    onToken?: (token: string) => void,
+  ): Promise<string> {
+    const prompt = this.buildPrompt(question, context, history);
 
     let lastError: unknown;
 
     for (const model of this.models) {
       try {
-        const response = await this.ai.models.generateContent({
+        const responseStream = await this.ai.models.generateContentStream({
           model,
           config: {
             maxOutputTokens: 2048,
@@ -58,14 +75,25 @@ ${question}`;
           contents: prompt,
         });
 
-        const answer = response.text;
-        if (answer?.trim()) {
-          return answer;
+        let fullAnswer = "";
+
+        for await (const chunk of responseStream) {
+          const text = chunk.text;
+          if (text) {
+            fullAnswer += text;
+            if (onToken) {
+              onToken(text);
+            }
+          }
+        }
+
+        if (fullAnswer.trim()) {
+          return fullAnswer;
         }
       } catch (error) {
         lastError = error;
         console.warn(
-          `Gemini model ${model} failed, attempting fallback to next model:`,
+          `Gemini model ${model} streaming failed, attempting fallback:`,
           error instanceof Error ? error.message : error,
         );
       }
@@ -75,6 +103,6 @@ ${question}`;
       throw lastError;
     }
 
-    throw new Error("Gemini did not return an answer");
+    throw new Error("Gemini streaming did not return an answer");
   }
 }

@@ -52,9 +52,10 @@ function Chat({
   const handleSendMessage = async (
     question: string,
   ): Promise<void> => {
+    const isNewConversation = !selectedConversationId;
     const createdConversationId = await sendMessage(question);
 
-    if (createdConversationId) {
+    if (createdConversationId && isNewConversation) {
       previousConversationId.current = createdConversationId;
       onConversationCreated(createdConversationId);
     }
@@ -72,7 +73,7 @@ function Chat({
             <p className="text-sm text-red-500">{error}</p>
           )}
 
-          {isLoading && (
+          {isLoading && messages[messages.length - 1]?.role !== "assistant" && (
             <p className="text-sm text-slate-400">Thinking...</p>
           )}
 
