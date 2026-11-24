@@ -24,6 +24,32 @@ export class RagService {
     relatedIssues: IssueListItem[];
     searchQuery?: string;
   }> {
+    return this.answerQuestionStream(
+      question,
+      historyOrLimit,
+      undefined,
+      maybeLimit,
+    );
+  }
+
+  async answerQuestionStream(
+    question: string,
+    historyOrLimit?: ChatHistoryTurn[] | number,
+    callbacks?: {
+      onMetadata?: (meta: {
+        sources: FusedChunk[];
+        relatedIssues: IssueListItem[];
+        searchQuery?: string;
+      }) => void;
+      onToken?: (token: string) => void;
+    },
+    maybeLimit?: number,
+  ): Promise<{
+    answer: string;
+    sources: FusedChunk[];
+    relatedIssues: IssueListItem[];
+    searchQuery?: string;
+  }> {
     if (!question.trim()) {
       throw new Error("Question cannot be empty");
     }
@@ -45,11 +71,19 @@ export class RagService {
         trimmedQuestion,
       );
     if (isGreeting) {
-      const greetingAnswer = await this.llmProvider.generateAnswer(
+      callbacks?.onMetadata?.({
+        sources: [],
+        relatedIssues: [],
+        searchQuery: trimmedQuestion,
+      });
+
+      const greetingAnswer = await this.llmProvider.generateAnswerStream(
         trimmedQuestion,
         "User is greeting or asking for an introduction. No specific document context required.",
         history,
+        callbacks?.onToken,
       );
+
       return {
         answer: greetingAnswer,
         sources: [],
@@ -82,9 +116,17 @@ export class RagService {
     }
 
     if (chunks.length === 0 && relatedIssues.length === 0) {
+      const fallbackMsg =
+        "No relevant information was found in the provided documents or issues";
+      callbacks?.onMetadata?.({
+        sources: [],
+        relatedIssues: [],
+        searchQuery,
+      });
+      callbacks?.onToken?.(fallbackMsg);
+
       return {
-        answer:
-          "No relevant information was found in the provided documents or issues",
+        answer: fallbackMsg,
         sources: [],
         relatedIssues: [],
         searchQuery,
@@ -121,11 +163,19 @@ export class RagService {
 
     const combinedContext = contextSections.join("\n\n");
 
-    // 4. Generate grounded answer passing original question + evidence + conversation history
-    const answer = await this.llmProvider.generateAnswer(
+    // Emit metadata before tokens start streaming
+    callbacks?.onMetadata?.({
+      sources: chunks,
+      relatedIssues,
+      searchQuery,
+    });
+
+    // 4. Stream grounded answer passing original question + evidence + conversation history
+    const answer = await this.llmProvider.generateAnswerStream(
       trimmedQuestion,
       combinedContext,
       history,
+      callbacks?.onToken,
     );
 
     return {

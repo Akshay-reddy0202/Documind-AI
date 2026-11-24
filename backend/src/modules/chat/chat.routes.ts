@@ -1,6 +1,7 @@
 import { Router } from "express";
 import {
   chat,
+  chatStream,
   getConversationHistory,
   getAllConversations,
   deleteConversation,
@@ -9,6 +10,7 @@ import {
 const router = Router();
 
 router.post("/", chat);
+router.post("/stream", chatStream);
 router.get("/", getAllConversations);
 router.get("/:conversationId", getConversationHistory);
 router.delete("/:conversationId", deleteConversation);

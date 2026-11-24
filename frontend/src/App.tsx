@@ -68,8 +68,10 @@ function App() {
   };
 
   const handleConversationCreated = (conversationId: string): void => {
-    setSelectedConversationId(conversationId);
-    void fetchConversations();
+    if (selectedConversationId !== conversationId) {
+      setSelectedConversationId(conversationId);
+      void fetchConversations();
+    }
   };
 
   const handleConversationSelect = async (

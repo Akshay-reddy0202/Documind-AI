@@ -79,6 +79,122 @@ export const chat = async (
   });
 };
 
+export const chatStream = async (
+  req: Request<{}, {}, ChatRequest>,
+  res: Response,
+) => {
+  const { question, conversationId } = chatRequestSchema.parse(req.body);
+
+  let conversation;
+  let recentHistory: { role: "USER" | "ASSISTANT"; content: string }[] = [];
+
+  if (conversationId) {
+    conversation =
+      await conversationRepository.getConversationById(conversationId);
+
+    if (!conversation) {
+      return res.status(404).json({
+        success: false,
+        message: "Conversation not found",
+      });
+    }
+
+    recentHistory = await conversationRepository.getRecentConversationTurns(
+      conversation.id,
+      2,
+    );
+  } else {
+    conversation = await conversationRepository.createConversation();
+    const trimmedQuestion = question.trim();
+    const title =
+      trimmedQuestion.length > 60
+        ? `${trimmedQuestion.slice(0, 59).trimEnd()}…`
+        : trimmedQuestion;
+
+    conversation = await conversationRepository.updateConversationTitle(
+      conversation.id,
+      title,
+    );
+  }
+
+  // 1. Persist the incoming user message
+  await conversationRepository.saveMessage(conversation.id, "USER", question);
+
+  // 2. Set SSE Headers for real-time streaming
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache, no-transform");
+  res.setHeader("Connection", "keep-alive");
+  res.flushHeaders();
+
+  const sendEvent = (event: string, data: Record<string, unknown>) => {
+    res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+  };
+
+  let isAborted = false;
+  req.on("close", () => {
+    isAborted = true;
+  });
+
+  try {
+    const result = await ragService.answerQuestionStream(
+      question,
+      recentHistory,
+      {
+        onMetadata: (meta) => {
+          if (!isAborted) {
+            sendEvent("metadata", {
+              conversationId: conversation.id,
+              title: conversation.title,
+              sources: meta.sources.map((source) => ({
+                documentId: source.documentId,
+                pageNumber: source.pageNumber,
+                chunkIndex: source.chunkIndex,
+                matchSource: source.matchSource,
+              })),
+              relatedIssues: meta.relatedIssues.map((issue) => ({
+                id: issue.id,
+                issueCode: issue.issueCode,
+                title: issue.title,
+                severity: issue.severity,
+                status: issue.status,
+                clientName: issue.document.clientName,
+              })),
+            });
+          }
+        },
+        onToken: (token) => {
+          if (!isAborted) {
+            sendEvent("token", { token });
+          }
+        },
+      },
+    );
+
+    // Save final assistant answer to database
+    await conversationRepository.saveMessage(
+      conversation.id,
+      "ASSISTANT",
+      result.answer,
+    );
+
+    if (!isAborted) {
+      sendEvent("done", {
+        conversationId: conversation.id,
+        answer: result.answer,
+      });
+      res.end();
+    }
+  } catch (error) {
+    if (!isAborted) {
+      sendEvent("error", {
+        message:
+          error instanceof Error ? error.message : "Failed to generate answer",
+      });
+      res.end();
+    }
+  }
+};
+
 export const getConversationHistory = async (
   req: Request<{ conversationId: string }>,
   res: Response,
